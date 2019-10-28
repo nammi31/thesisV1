@@ -1,0 +1,27 @@
+   
+
+   run it first...and check is everything is okkk....
+   It is working fine..
+
+
+   so only i need to add some app.js functions... and corresponding chaincode..
+
+   add public folder and index.html
+   No.. We can not use 1.4 version..as we can not setup multi-host
+   using this..
+
+
+  so i will fix the public key finding issue ..And we have got a solution
+  for this problem..
+
+   Now again i need version 1.4 . So i want to uncomment it..
+  Use new app.js and views and new chaincode..
+
+   _/ 1. add views folder
+   _/ 2. app.post('\login') and app.post('\register')
+    x 3. add newly written chaincode 
+
+   after adding chaincode i need to test 
+    x 1. node invoke.js 
+    x 2. node query.js
+    X 3. and finally node app.js okk??
