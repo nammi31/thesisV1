@@ -4,24 +4,30 @@
    It is working fine..
 
 
-   so only i need to add some app.js functions... and corresponding chaincode..
-
    add public folder and index.html
-   No.. We can not use 1.4 version..as we can not setup multi-host
-   using this..
-
-
-  so i will fix the public key finding issue ..And we have got a solution
-  for this problem..
-
-   Now again i need version 1.4 . So i want to uncomment it..
-  Use new app.js and views and new chaincode..
-
+   _/ we have found a way for public key issue
    _/ 1. add views folder
+
+    app.js
    _/ 2. app.post('\login') and app.post('\register')
-    x 3. add newly written chaincode 
+    x 3. update app.post('\') and app.get('\') 
+
+    chaincode
+   _/ 3. add getUserInfo & storeUserInfo function
+    x 4. add pi stucture
+    x 5. add initLedger, latestData & sensorData function
+    x 6. add action in Invoke function
 
    after adding chaincode i need to test 
-    x 1. node invoke.js 
-    x 2. node query.js
-    X 3. and finally node app.js okk??
+    _/ 1. node invoke.js 
+    _/ 2. node query.js
+     x 3. and finally node app.js okk??
+
+     x 4. error : fail to open wallet file
+     X 5. fail to login buffer error 
+     
+   
+   
+
+
+    
