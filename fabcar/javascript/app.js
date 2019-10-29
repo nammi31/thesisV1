@@ -3,10 +3,10 @@ var app = express();
 var http = require("http");
 const server = http.createServer(app);
 const path = require('path');
+const promise_fs = require('promise-fs')
 var bodyparser = require("body-parser");
 
 var multer  = require('multer')
-   , cp = require('child_process')
    , ursa = require('ursa')
    , fs = require('fs')
    , msg
@@ -63,7 +63,7 @@ app.post('/', (req, res) => {
         piID=data.piID
     }
    // START INVOKE TX
-   sync function main() {
+   async function main() {
     try {
 
         // Create a new file system based wallet for managing identities.
@@ -115,131 +115,106 @@ app.get('/register', (req,res)=>{
  // actions after submiting registration form 
  app.post('/register', (req, res) => {
 
-    var username = req.body.username 
-    var  msp_id = req.body.msp_id
-    var affiliation = req.body.affiliation
-    var password = req.body.password
-    //console.log('welcome '+ username +  ' msp_id : ' + msp_id+ ' affiliation : ' + affiliation + ' password : ' + password )
+    var user = {
+        name :  req.body.username ,
+        mspId : req.body.msp_id,
+        affiliation : req.body.affiliation,
+        password : req.body.password
+    }
+    console.log(user)
     var cert, pubKey;
-    // NEED TO MODIFY THIS VARIABLE INSIDE MAIN FUNCTION at any cost
-    let isSuccessReg = false
-    
-                  /*
+            /*
           * Register and Enroll a user
           */
-            async function main() {
-                try {
-
-                    // Create a new file system based wallet for managing identities.
-                    const walletPath = path.join(process.cwd(), 'wallet');
-                    const wallet = new FileSystemWallet(walletPath);
-                    console.log(`Wallet path: ${walletPath}`);
-
-                    // Check to see if we've already enrolled the user.
-                    const userExists = await wallet.exists(username);
-                    if (userExists) {
-                        console.log('An identity for the user '+username+' already exists in the wallet');
-                        return;
-                    }
-
-                    // Check to see if we've already enrolled the admin user.
-                    const adminExists = await wallet.exists('admin');
-                    if (!adminExists) {
-                        console.log('An identity for the admin user "admin" does not exist in the wallet');
-                        console.log('Run the enrollAdmin.js application before retrying');
-                        return;
-                    }
-
-                    // Create a new gateway for connecting to our peer node.
-                    const gateway = new Gateway();
-                    await gateway.connect(ccp, { wallet, identity: 'admin', discovery: { enabled: false } });
-
-                    // Get the CA client object from the gateway for interacting with the CA.
-                    const ca = gateway.getClient().getCertificateAuthority();
-                    const adminIdentity = gateway.getCurrentIdentity();
-
-                    // Register the user, enroll the user, and import the new identity into the wallet.
-                    const secret = await ca.register({ affiliation: affiliation, enrollmentID: username, role: 'client' ,enrollmentSecret: password  }, adminIdentity);
-                    const enrollment = await ca.enroll({ enrollmentID: username, enrollmentSecret: secret });
-                    const userIdentity = X509WalletMixin.createIdentity(msp_id, enrollment.certificate, enrollment.key.toBytes());
-                    wallet.import(username, userIdentity);
-                    
-                    isSuccessReg = true
-        
-                    console.log('Successfully registered and enrolled user '+username+' and imported it into the wallet');
-                    res.send('Successfully registered and enrolled user '+username)
-                    
+           async function main(user) {
+            var isSuccess = false   
+              try {
                  
+        // Create a new file system based wallet for managing identities.
+        const walletPath = path.join(process.cwd(), 'wallet');
+        const wallet = new FileSystemWallet(walletPath);
+        console.log(`Wallet path: ${walletPath}`);
+
+        // Check to see if we've already enrolled the user.
+        const userExists = await wallet.exists(user.name);
+        if (userExists) {
+            console.log('An identity for the user ' +user.name+ ' already exists in the wallet');
+            return;
+        }
+
+        // Check to see if we've already enrolled the admin user.
+        const adminExists = await wallet.exists('admin');
+        if (!adminExists) {
+            console.log('An identity for the admin user "admin" does not exist in the wallet');
+            console.log('Run the enrollAdmin.js application before retrying');
+            return;
+        }
+
+        // Create a new gateway for connecting to our peer node.
+        const gateway = new Gateway();
+        await gateway.connect(ccp, { wallet, identity: 'admin', discovery: { enabled: false } });
+
+        // Get the CA client object from the gateway for interacting with the CA.
+        const ca = gateway.getClient().getCertificateAuthority();
+        const adminIdentity = gateway.getCurrentIdentity();
+
+        // Register the user, enroll the user, and import the new identity into the wallet.
+        const secret = await ca.register({ affiliation: user.affiliation, enrollmentID: user.name, enrollmentSecret: user.password,role: 'client' }, adminIdentity);
+        const enrollment = await ca.enroll({ enrollmentID: user.name, enrollmentSecret: secret });
+        const userIdentity = X509WalletMixin.createIdentity(user.mspId, enrollment.certificate, enrollment.key.toBytes());
+        wallet.import(user.name, userIdentity);
+
+        
+
+        // pubKey = buf.toString()
+        // userId = user.name
+        // cert =  JSON.parse(buf.toString()).enrollment.certificate
+        // console.log('userId : ',userId,'cert : ',cert,'pubkey : ',pubKey)
+        user.certificate = enrollment.certificate
+        isSuccess = true
+        // setTimeout(function(){ 
+
+        //     console.log ('I am sleeping for 3 sec before return');
+        // }, 3000);
+        return isSuccess       
                 } catch (error) {
-                    console.error('Failed to register user ' + username+' : ${error} : '+error);
+                    return isSuccess
+                    console.error('Failed to register user ' + user.name+' : ${error} : '+error);
                     process.exit(1);
                 }
             }
-
-            main();
-
-            
-            if (isSuccessReg == true){
-                 //  registration is successful
-                    // READ CERT,PUBLIC KEY FROM USER'S WALLET 
-                    var buf = fs.readFileSync('wallet/'+username+'/'+username)   //read cert file
-                    var pubfileName =  JSON.parse(buf.toString()).enrollment.signingIdentity //find pubkeyfilename 
-                    buf = fs.readFileSync('wallet/'+username+'/'+pubfileName+'-pub')
-
-                    pubKey = buf.toString()
-                    userId = username
-                    cert =  enrollment.certificate
-                    console.log('userId : ',userId,'cert : ',cert,'pubkey : ',pubKey)
-
-                     // OK Now store USER INFO  at blockchain
-                   // START INVOKE TRANSACTION 
-                  async function invokemain() {
-                    try {
-                
-                        // Create a new file system based wallet for managing identities.
-                        const walletPath = path.join(process.cwd(), 'wallet');
-                        const wallet = new FileSystemWallet(walletPath);
-                        console.log(`Wallet path: ${walletPath}`);
-                
-                        // Check to see if we've already enrolled the user.
-                        const userExists = await wallet.exists(username);
-                        if (!userExists) {
-                            console.log('An identity for the user '+username+' does not exist in the wallet');
-                            console.log('Run the registerUser.js application before retrying');
-                            return;
-                        }
-                
-                        // Create a new gateway for connecting to our peer node.
-                        const gateway = new Gateway();
-                        await gateway.connect(ccp, { wallet, identity: username, discovery: { enabled: false } });
-                
-                        // Get the network (channel) our contract is deployed to.
-                        const network = await gateway.getNetwork('mychannel');
-                
-                        // Get the contract from the network.
-                        const contract = network.getContract('fabcar');
-                
-                       // submit the tx
-                        await contract.submitTransaction('storeUserInfo', userId, cert,pubKey);
-                        console.log('Transaction has been submitted');
-                
-                        // Disconnect from the gateway.
-                        await gateway.disconnect();
-                
-                    } catch (error) {
-                        console.error(`Failed to submit transaction: ${error}`);
-                        process.exit(1);
-                    }
-                  }
-                  invokemain();
-                // END INVOKE TRANSACTION
-
-            }
+           async function findPubKey(pathUrl){
+                var  buf = await fs.readFileSync(pathUrl+user.name)
+                console.log(user.name + ' identity file : ',buf.toString())
+                var pubfileName =  JSON.parse(buf.toString()).enrollment.signingIdentity //find pubkeyfilename 
+                buf = await fs.readFileSync(pathUrl+pubfileName+'-pub')
+                console.log('public key : ', buf.toString())
+                return buf.toString()
+           }
+           main(user).then( (isSuccess)=>{
+               console.log(user)
+               console.log(isSuccess)
+               if (isSuccess == true) {
+               console.log('Successfully registered and enrolled user '+user.name+' and imported it into the wallet');
+               res.send('Successfully registered and enrolled user '+user.name)
+               }
+               user.name = 'user1'   // take user1 to check whether code is right or wrong  
+                  
+                var pathUrl = 'wallet/'+user.name+'/'
+                //return findPubKey(pathUrl)   
+                return  promise_fs.readFile(pathUrl+user.name)
+            //}).then ( (pubKey)=>{
+            }).then ( (content)=>{
+                console.log(content.toString())
+                                })
+             .catch((err)=> {
+                console.error('Failed to register: ' + err);
+                            })
            // END REGISTRATION
-           // All of my task is complete 
-
           
-})
+
+           
+        })
   
 // show login form when go /login url
     app.get('/login', (req,res)=>{
@@ -256,8 +231,8 @@ app.post('/upload', upload.single('keyFile'), function (req, res, next) {
     console.log(" private key:", buf.toString('utf8') );
 
     var user = {
-        userId : req.body.username
-        password : req.body.password
+        userId : req.body.username,
+        password : req.body.password,
         privateKey : buf.toString()
     }
     console.log('user : ', user)

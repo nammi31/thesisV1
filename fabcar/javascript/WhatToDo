@@ -25,6 +25,16 @@
 
      x 4. error : fail to open wallet file
      X 5. fail to login buffer error 
+
+   x  solution 1: I handle promise just like fabric 1.2 version.. Still inspite of creating file it shows no such file or directory..So what to do then???? 
+   x solution 2: use promise-fs .. I think it will not work as we have no need to await reading file..
+   x  solution 3: outside of register function.. But then no such file or directory ...
+   solution 4: give some secs for load time sleep 
+    Nothing is work out I do not know what should i do...
+
+     
+    
+    
      
    
    
